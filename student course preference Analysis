@@ -1,0 +1,351 @@
+import tkinter as tk
+from tkinter import ttk, messagebox
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import os
+
+FILE = "student_course_preferences.csv"
+
+# -------------------- DATA --------------------
+
+courses = [
+    "Computer Science",
+    "Artificial Intelligence",
+    "Data Science",
+    "Cyber Security",
+    "IoT",
+    "Cloud Computing"
+]
+
+if os.path.exists(FILE):
+    df = pd.read_csv(FILE)
+else:
+    df = pd.DataFrame(columns=["Name", "Roll No", "Year", "Course Preference"])
+
+
+# -------------------- FUNCTIONS --------------------
+
+def add_student():
+    global df
+
+    name = name_entry.get().strip()
+    roll = roll_entry.get().strip()
+    year = year_combo.get()
+    course = course_combo.get()
+
+    if name == "" or roll == "" or year == "" or course == "":
+        messagebox.showwarning("Warning", "Please fill all fields.")
+        return
+
+    if roll in df["Roll No"].astype(str).values:
+        messagebox.showerror("Error", "Roll number already exists.")
+        return
+
+    new_student = pd.DataFrame([{
+        "Name": name,
+        "Roll No": roll,
+        "Year": year,
+        "Course Preference": course
+    }])
+
+    df = pd.concat([df, new_student], ignore_index=True)
+    df.to_csv(FILE, index=False)
+
+    clear_fields()
+    display_students()
+
+    messagebox.showinfo("Success", "Student added successfully!")
+
+
+def clear_fields():
+    name_entry.delete(0, tk.END)
+    roll_entry.delete(0, tk.END)
+    year_combo.set("")
+    course_combo.set("")
+
+
+def display_students():
+    for item in table.get_children():
+        table.delete(item)
+
+    for _, row in df.iterrows():
+        table.insert("", tk.END, values=(
+            row["Name"],
+            row["Roll No"],
+            row["Year"],
+            row["Course Preference"]
+        ))
+
+
+def show_analysis():
+    if df.empty:
+        messagebox.showinfo("Analysis", "No student data available.")
+        return
+
+    counts = df["Course Preference"].value_counts()
+
+    total = len(df)
+    most_preferred = counts.idxmax()
+    highest = counts.max()
+
+    result = f"""
+STUDENT COURSE PREFERENCE ANALYSIS
+
+Total Students: {total}
+
+Most Preferred Course:
+{most_preferred}
+
+Number of Students:
+{highest}
+
+Course Preference:
+
+"""
+
+    for course, count in counts.items():
+        percentage = (count / total) * 100
+        result += f"{course}: {count} students ({percentage:.2f}%)\n"
+
+    messagebox.showinfo("Analysis Result", result)
+
+
+def show_chart():
+    if df.empty:
+        messagebox.showwarning("Warning", "No data available.")
+        return
+
+    counts = df["Course Preference"].value_counts()
+
+    plt.figure(figsize=(10, 6))
+    counts.plot(kind="bar")
+
+    plt.title("Students Course Preference Analysis")
+    plt.xlabel("Courses")
+    plt.ylabel("Number of Students")
+    plt.xticks(rotation=30, ha="right")
+    plt.tight_layout()
+    plt.show()
+
+
+def search_student():
+    name = search_entry.get().strip().lower()
+
+    if name == "":
+        messagebox.showwarning("Warning", "Enter a student name.")
+        return
+
+    result = df[df["Name"].astype(str).str.lower().str.contains(name)]
+
+    for item in table.get_children():
+        table.delete(item)
+
+    for _, row in result.iterrows():
+        table.insert("", tk.END, values=(
+            row["Name"],
+            row["Roll No"],
+            row["Year"],
+            row["Course Preference"]
+        ))
+
+    if result.empty:
+        messagebox.showinfo("Search", "Student not found.")
+
+
+def show_statistics():
+    if df.empty:
+        messagebox.showinfo("Statistics", "No data available.")
+        return
+
+    total_students = len(df)
+    unique_courses = df["Course Preference"].nunique()
+
+    result = f"""
+STATISTICS
+
+Total Students: {total_students}
+Courses Available: {unique_courses}
+
+Average Preference Value:
+{np.mean(df["Course Preference"].value_counts()):.2f}
+
+Most Popular:
+{df["Course Preference"].value_counts().idxmax()}
+"""
+
+    messagebox.showinfo("Statistics", result)
+
+
+# -------------------- GUI --------------------
+
+root = tk.Tk()
+root.title("Students Course Preference Analysis")
+root.geometry("1000x700")
+root.configure(bg="#f2f2f2")
+
+title = tk.Label(
+    root,
+    text="STUDENTS COURSE PREFERENCE ANALYSIS",
+    font=("Arial", 22, "bold"),
+    bg="#263238",
+    fg="white",
+    pady=15
+)
+title.pack(fill=tk.X)
+
+# Input Frame
+input_frame = tk.LabelFrame(
+    root,
+    text="Student Details",
+    font=("Arial", 13, "bold"),
+    bg="#f2f2f2",
+    padx=15,
+    pady=15
+)
+input_frame.pack(fill=tk.X, padx=20, pady=15)
+
+tk.Label(input_frame, text="Student Name:",
+         bg="#f2f2f2").grid(row=0, column=0, padx=10, pady=8)
+
+name_entry = tk.Entry(input_frame, width=25)
+name_entry.grid(row=0, column=1, padx=10)
+
+tk.Label(input_frame, text="Roll Number:",
+         bg="#f2f2f2").grid(row=0, column=2, padx=10)
+
+roll_entry = tk.Entry(input_frame, width=20)
+roll_entry.grid(row=0, column=3, padx=10)
+
+tk.Label(input_frame, text="Year:",
+         bg="#f2f2f2").grid(row=1, column=0, padx=10, pady=8)
+
+year_combo = ttk.Combobox(
+    input_frame,
+    values=["First Year", "Second Year", "Third Year", "Final Year"],
+    state="readonly",
+    width=22
+)
+year_combo.grid(row=1, column=1, padx=10)
+
+tk.Label(input_frame, text="Course Preference:",
+         bg="#f2f2f2").grid(row=1, column=2, padx=10)
+
+course_combo = ttk.Combobox(
+    input_frame,
+    values=courses,
+    state="readonly",
+    width=25
+)
+course_combo.grid(row=1, column=3, padx=10)
+
+add_button = tk.Button(
+    input_frame,
+    text="ADD STUDENT",
+    command=add_student,
+    bg="#4CAF50",
+    fg="white",
+    font=("Arial", 11, "bold"),
+    width=18
+)
+add_button.grid(row=2, column=1, pady=15)
+
+clear_button = tk.Button(
+    input_frame,
+    text="CLEAR",
+    command=clear_fields,
+    bg="#757575",
+    fg="white",
+    font=("Arial", 11, "bold"),
+    width=18
+)
+clear_button.grid(row=2, column=2, pady=15)
+
+# Search Frame
+search_frame = tk.Frame(root, bg="#f2f2f2")
+search_frame.pack(fill=tk.X, padx=20)
+
+tk.Label(
+    search_frame,
+    text="Search Student:",
+    font=("Arial", 11, "bold"),
+    bg="#f2f2f2"
+).pack(side=tk.LEFT, padx=5)
+
+search_entry = tk.Entry(search_frame, width=25)
+search_entry.pack(side=tk.LEFT, padx=5)
+
+tk.Button(
+    search_frame,
+    text="SEARCH",
+    command=search_student,
+    bg="#2196F3",
+    fg="white",
+    font=("Arial", 10, "bold")
+).pack(side=tk.LEFT, padx=5)
+
+tk.Button(
+    search_frame,
+    text="SHOW ALL",
+    command=display_students,
+    bg="#607D8B",
+    fg="white",
+    font=("Arial", 10, "bold")
+).pack(side=tk.LEFT, padx=5)
+
+# Table
+table_frame = tk.Frame(root)
+table_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=15)
+
+columns = ("Name", "Roll No", "Year", "Course Preference")
+
+table = ttk.Treeview(
+    table_frame,
+    columns=columns,
+    show="headings"
+)
+
+for col in columns:
+    table.heading(col, text=col)
+    table.column(col, width=200)
+
+table.pack(fill=tk.BOTH, expand=True)
+
+# Buttons
+button_frame = tk.Frame(root, bg="#f2f2f2")
+button_frame.pack(pady=15)
+
+tk.Button(
+    button_frame,
+    text="COURSE ANALYSIS",
+    command=show_analysis,
+    bg="#FF9800",
+    fg="white",
+    font=("Arial", 11, "bold"),
+    width=18
+).grid(row=0, column=0, padx=8)
+
+tk.Button(
+    button_frame,
+    text="SHOW CHART",
+    command=show_chart,
+    bg="#9C27B0",
+    fg="white",
+    font=("Arial", 11, "bold"),
+    width=18
+).grid(row=0, column=1, padx=8)
+
+tk.Button(
+    button_frame,
+    text="STATISTICS",
+    command=show_statistics,
+    bg="#009688",
+    fg="white",
+    font=("Arial", 11, "bold"),
+    width=18
+).grid(row=0, column=2, padx=8)
+
+# Load existing data
+display_students()
+
+root.mainloop()
